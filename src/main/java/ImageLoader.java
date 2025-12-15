@@ -10,7 +10,7 @@ public class ImageLoader {
         try {
             image = ImageIO.read(getClass().getResource(path));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return image;
     }

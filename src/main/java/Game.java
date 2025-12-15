@@ -86,6 +86,7 @@ public class Game extends Canvas implements Runnable{
         g.setColor(Color.white);
         g.fillRect(0,0,1000,563);
 
+
         handler.render(g);
 
 
@@ -105,7 +106,7 @@ public class Game extends Canvas implements Runnable{
             for(int yy = 0; yy < h; yy++){
                 int pixel = image.getRGB(xx,yy);
                 int red = (pixel>>16) & 0xff;
-                int green= (pixel>>8) & 0xff;
+                int green = (pixel>>8) & 0xff;
                 int blue = (pixel) & 0xff;
 
                 if(red==255)

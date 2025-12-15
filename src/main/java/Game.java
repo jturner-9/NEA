@@ -20,6 +20,7 @@ public class Game extends Canvas implements Runnable{
         handler= new Handler();
         camera = new Camera(0,0);
         this.addKeyListener(new Input(handler));
+        this.addMouseListener(new MouseInput(handler, camera));
 
         ImageLoader loader = new ImageLoader();
         level = loader.loadImage("/game_level.png");

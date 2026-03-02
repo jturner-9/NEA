@@ -97,8 +97,35 @@ public class Game extends Canvas implements Runnable {
         handler.render(g);
         g2d.translate(camera.getX(), camera.getY());
 
+        renderHealthBar(g);
+
         g.dispose();
         bs.show();
+    }
+
+    private void renderHealthBar(Graphics g) {
+        GameObject gameObject = handler.getPlayer();
+        if (!(gameObject instanceof Player player)) {
+            return;
+        }
+
+        int barWidth = 220;
+        int barHeight = 24;
+        int x = 20;
+        int y = 20;
+
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(x, y, barWidth, barHeight);
+
+        float healthRatio = (float) player.getHealth() / player.getMaxHealth();
+        int currentWidth = (int) (barWidth * healthRatio);
+
+        g.setColor(new Color(30, 180, 30));
+        g.fillRect(x, y, currentWidth, barHeight);
+
+        g.setColor(Color.BLACK);
+        g.drawRect(x, y, barWidth, barHeight);
+        g.drawString("Health: " + player.getHealth() + "/" + player.getMaxHealth(), x + 8, y + 16);
     }
 
     private void loadLevel(BufferedImage image) {

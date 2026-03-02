@@ -34,6 +34,15 @@ public class Handler {
         object.remove(tempObject);
     }
 
+    public GameObject getPlayer() {
+        for (GameObject gameObject : object) {
+            if (gameObject.getId() == ID.Player) {
+                return gameObject;
+            }
+        }
+        return null;
+    }
+
     public boolean isUp() {
         return up;
     }

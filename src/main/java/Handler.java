@@ -6,6 +6,7 @@ public class Handler {
     LinkedList<GameObject> object = new LinkedList<GameObject>();
 
     private boolean up = false, down=false, right=false, left= false;
+    private int enemiesKilled = 0;
 
 
     public void tick(){
@@ -32,6 +33,18 @@ public class Handler {
 
     public void removeObject (GameObject tempObject){
         object.remove(tempObject);
+    }
+
+    public void registerEnemyKill() {
+        enemiesKilled++;
+    }
+
+    public int getEnemiesKilled() {
+        return enemiesKilled;
+    }
+
+    public void resetRoundStats() {
+        enemiesKilled = 0;
     }
 
     public GameObject getPlayer() {

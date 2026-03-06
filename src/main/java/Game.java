@@ -16,6 +16,8 @@ public class Game extends Canvas implements Runnable {
 
     private final Rectangle startButtonBounds = new Rectangle(420, 260, 160, 60);
     private final Rectangle quitButtonBounds = new Rectangle(420, 350, 160, 60);
+    private final Rectangle restartButtonBounds = new Rectangle(270, 390, 220, 90);
+    private final Rectangle menuButtonBounds = new Rectangle(510, 390, 220, 90);
 
     public Game() {
         new Window(1000, 563, "Shooter", this);
@@ -74,7 +76,7 @@ public class Game extends Canvas implements Runnable {
     }
 
     public void tick() {
-        if (gameState == GameState.Menu) {
+        if (gameState != GameState.Game) {
             return;
         }
 
@@ -86,6 +88,12 @@ public class Game extends Canvas implements Runnable {
         }
 
         handler.tick();
+
+        GameObject playerObject = handler.getPlayer();
+        if (playerObject instanceof Player player && player.getHealth() <= 0) {
+            gameState = GameState.GameOver;
+            resetMovementFlags();
+        }
     }
 
     public void render() {
@@ -105,6 +113,8 @@ public class Game extends Canvas implements Runnable {
             handler.render(g);
             g2d.translate(camera.getX(), camera.getY());
             renderHealthBar(g);
+        } else if (gameState == GameState.GameOver) {
+            renderGameOverScreen(g2d);
         } else {
             renderStartMenu(g2d);
         }
@@ -132,6 +142,25 @@ public class Game extends Canvas implements Runnable {
         drawMenuButton(g, quitButtonBounds, "Quit");
     }
 
+    private void renderGameOverScreen(Graphics2D g) {
+        g.setColor(new Color(225, 225, 225));
+        g.fillRect(8, 8, 984, 547);
+
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(5));
+        g.drawRect(6, 6, 988, 551);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 72));
+        FontMetrics titleMetrics = g.getFontMetrics();
+        String title = "GAME OVER";
+        int titleX = (1000 - titleMetrics.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 240);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 30));
+        drawMenuButton(g, restartButtonBounds, "Restart");
+        drawMenuButton(g, menuButtonBounds, "Menu");
+    }
+
     private void drawMenuButton(Graphics2D g, Rectangle bounds, String label) {
         g.setColor(new Color(235, 235, 235));
         g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -147,17 +176,27 @@ public class Game extends Canvas implements Runnable {
     }
 
     public void handleMenuClick(int mouseX, int mouseY) {
-        if (gameState != GameState.Menu) {
+        if (gameState == GameState.Menu) {
+            if (startButtonBounds.contains(mouseX, mouseY)) {
+                startGame();
+                return;
+            }
+
+            if (quitButtonBounds.contains(mouseX, mouseY)) {
+                System.exit(0);
+            }
             return;
         }
 
-        if (startButtonBounds.contains(mouseX, mouseY)) {
-            startGame();
-            return;
-        }
+        if (gameState == GameState.GameOver) {
+            if (restartButtonBounds.contains(mouseX, mouseY)) {
+                startGame();
+                return;
+            }
 
-        if (quitButtonBounds.contains(mouseX, mouseY)) {
-            System.exit(0);
+            if (menuButtonBounds.contains(mouseX, mouseY)) {
+                returnToMenu();
+            }
         }
     }
 
@@ -167,10 +206,26 @@ public class Game extends Canvas implements Runnable {
         }
 
         handler.object.clear();
+        resetMovementFlags();
         camera.setX(0);
         camera.setY(0);
         loadLevel(level);
         gameState = GameState.Game;
+    }
+
+    private void returnToMenu() {
+        handler.object.clear();
+        resetMovementFlags();
+        camera.setX(0);
+        camera.setY(0);
+        gameState = GameState.Menu;
+    }
+
+    private void resetMovementFlags() {
+        handler.setUp(false);
+        handler.setDown(false);
+        handler.setLeft(false);
+        handler.setRight(false);
     }
 
     public boolean isGameRunning() {
@@ -179,7 +234,8 @@ public class Game extends Canvas implements Runnable {
 
     private enum GameState {
         Menu,
-        Game
+        Game,
+        GameOver
     }
 
     private void renderHealthBar(Graphics g) {

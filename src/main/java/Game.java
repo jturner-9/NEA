@@ -142,11 +142,11 @@ public class Game extends Canvas implements Runnable {
 
         g.setColor(Color.BLACK);
         g.setStroke(new BasicStroke(5));
-        g.drawRect(6, 6, 988, 551);
+        g.drawRect(6, 6, 970, 514);
 
         g.setFont(new Font("Arial", Font.PLAIN, 72));
         FontMetrics titleMetrics = g.getFontMetrics();
-        String title = "Title";
+        String title = "Top-Down Shooter";
         int titleX = (1000 - titleMetrics.stringWidth(title)) / 2;
         g.drawString(title, titleX, 200);
 
@@ -163,7 +163,7 @@ public class Game extends Canvas implements Runnable {
 
         g.setColor(Color.BLACK);
         g.setStroke(new BasicStroke(5));
-        g.drawRect(6, 6, 988, 551);
+        g.drawRect(6, 6, 970, 514);
 
         g.setFont(new Font("Arial", Font.PLAIN, 72));
         FontMetrics titleMetrics = g.getFontMetrics();
@@ -178,10 +178,10 @@ public class Game extends Canvas implements Runnable {
 
         if (newHighScore) {
             g.setColor(new Color(0, 130, 0));
-            g.drawString("New High Score!", 345, 370);
+            g.drawString("New High Score!", 500, 360);
             g.setColor(Color.BLACK);
         } else {
-            g.drawString("High Score: " + highScore, 345, 370);
+            g.drawString("High Score: " + highScore, 500, 360);
         }
 
         drawMenuButton(g, restartButtonBounds, "Restart");

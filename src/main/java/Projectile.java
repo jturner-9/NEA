@@ -28,6 +28,7 @@ public class Projectile extends GameObject {
 
                 if (tempObject.getId() == ID.Enemy) {
                     handler.removeObject(tempObject);
+                    handler.registerEnemyKill();
                 }
                 return;
             }

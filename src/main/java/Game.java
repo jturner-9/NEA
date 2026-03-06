@@ -1,6 +1,9 @@
 import java.awt.*;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Game extends Canvas implements Runnable {
 
@@ -19,6 +22,14 @@ public class Game extends Canvas implements Runnable {
     private final Rectangle restartButtonBounds = new Rectangle(270, 390, 220, 90);
     private final Rectangle menuButtonBounds = new Rectangle(510, 390, 220, 90);
 
+    private final Path highScoreFilePath = Path.of("highscore.txt");
+    private long roundStartTimeMs;
+    private int roundTimeSeconds;
+    private int roundScore;
+    private int roundKills;
+    private int highScore;
+    private boolean newHighScore;
+
     public Game() {
         new Window(1000, 563, "Shooter", this);
         start();
@@ -30,6 +41,7 @@ public class Game extends Canvas implements Runnable {
 
         ImageLoader loader = new ImageLoader();
         level = loader.loadImage("/game_level.png");
+        highScore = loadHighScore();
 
     }
 
@@ -91,6 +103,7 @@ public class Game extends Canvas implements Runnable {
 
         GameObject playerObject = handler.getPlayer();
         if (playerObject instanceof Player player && player.getHealth() <= 0) {
+            finalizeRound();
             gameState = GameState.GameOver;
             resetMovementFlags();
         }
@@ -138,6 +151,8 @@ public class Game extends Canvas implements Runnable {
         g.drawString(title, titleX, 200);
 
         g.setFont(new Font("Arial", Font.PLAIN, 30));
+        g.drawString("High Score: " + highScore, 390, 250);
+
         drawMenuButton(g, startButtonBounds, "Start");
         drawMenuButton(g, quitButtonBounds, "Quit");
     }
@@ -157,6 +172,18 @@ public class Game extends Canvas implements Runnable {
         g.drawString(title, titleX, 240);
 
         g.setFont(new Font("Arial", Font.PLAIN, 30));
+        g.drawString("Round Time: " + roundTimeSeconds + "s", 345, 290);
+        g.drawString("Enemies Killed: " + roundKills, 345, 325);
+        g.drawString("Score: " + roundScore, 345, 360);
+
+        if (newHighScore) {
+            g.setColor(new Color(0, 130, 0));
+            g.drawString("New High Score!", 345, 370);
+            g.setColor(Color.BLACK);
+        } else {
+            g.drawString("High Score: " + highScore, 345, 370);
+        }
+
         drawMenuButton(g, restartButtonBounds, "Restart");
         drawMenuButton(g, menuButtonBounds, "Menu");
     }
@@ -206,6 +233,12 @@ public class Game extends Canvas implements Runnable {
         }
 
         handler.object.clear();
+        handler.resetRoundStats();
+        roundStartTimeMs = System.currentTimeMillis();
+        roundTimeSeconds = 0;
+        roundScore = 0;
+        roundKills = 0;
+        newHighScore = false;
         resetMovementFlags();
         camera.setX(0);
         camera.setY(0);
@@ -215,6 +248,12 @@ public class Game extends Canvas implements Runnable {
 
     private void returnToMenu() {
         handler.object.clear();
+        handler.resetRoundStats();
+        roundStartTimeMs = System.currentTimeMillis();
+        roundTimeSeconds = 0;
+        roundScore = 0;
+        roundKills = 0;
+        newHighScore = false;
         resetMovementFlags();
         camera.setX(0);
         camera.setY(0);
@@ -286,6 +325,47 @@ public class Game extends Canvas implements Runnable {
                     handler.addObject(new Enemy(xx * 32, yy * 32, ID.Enemy, handler));
                 }
             }
+        }
+    }
+
+    private void finalizeRound() {
+        roundKills = handler.getEnemiesKilled();
+        roundTimeSeconds = (int) ((System.currentTimeMillis() - roundStartTimeMs) / 1000L);
+        roundScore = calculateRoundScore(roundTimeSeconds, roundKills);
+
+        if (roundScore > highScore) {
+            highScore = roundScore;
+            newHighScore = true;
+            saveHighScore(highScore);
+        } else {
+            newHighScore = false;
+        }
+    }
+
+    private int calculateRoundScore(int survivedSeconds, int enemiesKilled) {
+        return survivedSeconds * 10 + enemiesKilled * 100;
+    }
+
+    private int loadHighScore() {
+        if (!Files.exists(highScoreFilePath)) {
+            return 0;
+        }
+
+        try {
+            String value = Files.readString(highScoreFilePath).trim();
+            if (value.isEmpty()) {
+                return 0;
+            }
+            return Integer.parseInt(value);
+        } catch (IOException | NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void saveHighScore(int score) {
+        try {
+            Files.writeString(highScoreFilePath, String.valueOf(score));
+        } catch (IOException ignored) {
         }
     }
 

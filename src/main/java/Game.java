@@ -12,6 +12,10 @@ public class Game extends Canvas implements Runnable {
     private Camera camera;
 
     private BufferedImage level = null;
+    private GameState gameState = GameState.Menu;
+
+    private final Rectangle startButtonBounds = new Rectangle(420, 260, 160, 60);
+    private final Rectangle quitButtonBounds = new Rectangle(420, 350, 160, 60);
 
     public Game() {
         new Window(1000, 563, "Shooter", this);
@@ -19,13 +23,12 @@ public class Game extends Canvas implements Runnable {
 
         handler = new Handler();
         camera = new Camera(0, 0);
-        this.addKeyListener(new Input(handler));
-        this.addMouseListener(new MouseInput(handler, camera));
+        this.addKeyListener(new Input(handler, this));
+        this.addMouseListener(new MouseInput(handler, camera, this));
 
         ImageLoader loader = new ImageLoader();
         level = loader.loadImage("/game_level.png");
 
-        loadLevel(level);
     }
 
     private void start() {
@@ -71,6 +74,10 @@ public class Game extends Canvas implements Runnable {
     }
 
     public void tick() {
+        if (gameState == GameState.Menu) {
+            return;
+        }
+
         for (GameObject gameObject : handler.object) {
             if (gameObject.getId() == ID.Player) {
                 camera.tick(gameObject);
@@ -93,14 +100,86 @@ public class Game extends Canvas implements Runnable {
         g.setColor(Color.white);
         g.fillRect(0, 0, 1000, 563);
 
-        g2d.translate(-camera.getX(), -camera.getY());
-        handler.render(g);
-        g2d.translate(camera.getX(), camera.getY());
-
-        renderHealthBar(g);
+        if (gameState == GameState.Game) {
+            g2d.translate(-camera.getX(), -camera.getY());
+            handler.render(g);
+            g2d.translate(camera.getX(), camera.getY());
+            renderHealthBar(g);
+        } else {
+            renderStartMenu(g2d);
+        }
 
         g.dispose();
         bs.show();
+    }
+
+    private void renderStartMenu(Graphics2D g) {
+        g.setColor(new Color(225, 225, 225));
+        g.fillRect(8, 8, 984, 547);
+
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(5));
+        g.drawRect(6, 6, 988, 551);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 72));
+        FontMetrics titleMetrics = g.getFontMetrics();
+        String title = "Title";
+        int titleX = (1000 - titleMetrics.stringWidth(title)) / 2;
+        g.drawString(title, titleX, 200);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 30));
+        drawMenuButton(g, startButtonBounds, "Start");
+        drawMenuButton(g, quitButtonBounds, "Quit");
+    }
+
+    private void drawMenuButton(Graphics2D g, Rectangle bounds, String label) {
+        g.setColor(new Color(235, 235, 235));
+        g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+        g.setColor(Color.BLACK);
+        g.setStroke(new BasicStroke(5));
+        g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+        FontMetrics metrics = g.getFontMetrics();
+        int textX = bounds.x + (bounds.width - metrics.stringWidth(label)) / 2;
+        int textY = bounds.y + ((bounds.height - metrics.getHeight()) / 2) + metrics.getAscent();
+        g.drawString(label, textX, textY);
+    }
+
+    public void handleMenuClick(int mouseX, int mouseY) {
+        if (gameState != GameState.Menu) {
+            return;
+        }
+
+        if (startButtonBounds.contains(mouseX, mouseY)) {
+            startGame();
+            return;
+        }
+
+        if (quitButtonBounds.contains(mouseX, mouseY)) {
+            System.exit(0);
+        }
+    }
+
+    private void startGame() {
+        if (gameState == GameState.Game) {
+            return;
+        }
+
+        handler.object.clear();
+        camera.setX(0);
+        camera.setY(0);
+        loadLevel(level);
+        gameState = GameState.Game;
+    }
+
+    public boolean isGameRunning() {
+        return gameState == GameState.Game;
+    }
+
+    private enum GameState {
+        Menu,
+        Game
     }
 
     private void renderHealthBar(Graphics g) {

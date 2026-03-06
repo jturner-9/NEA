@@ -5,15 +5,22 @@ public class MouseInput extends MouseAdapter {
 
     private Handler handler;
     private Camera camera;
+    private final Game game;
 
-    public MouseInput(Handler handler,Camera camera){
+    public MouseInput(Handler handler, Camera camera, Game game){
         this.handler = handler;
-        this.camera= camera;
+        this.camera = camera;
+        this.game = game;
     }
 
     public void mousePressed(MouseEvent e){
-        int mx = (int) (e.getX()+ camera.getX());
-        int my = (int) (e.getY()+ camera.getY());
+        if (!game.isGameRunning()) {
+            game.handleMenuClick(e.getX(), e.getY());
+            return;
+        }
+
+        int mx = (int) (e.getX() + camera.getX());
+        int my = (int) (e.getY() + camera.getY());
 
         for(int i = 0; i < handler.object.size();i++){
             GameObject tempObject = handler.object.get(i);

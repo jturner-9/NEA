@@ -4,13 +4,19 @@ import java.awt.event.KeyEvent;
 public class Input extends KeyAdapter {
 
     Handler handler;
+    private final Game game;
 
-    public Input(Handler handler){
+    public Input(Handler handler, Game game){
         this.handler = handler;
+        this.game = game;
     }
 
 
     public void keyPressed(KeyEvent e){
+        if (!game.isGameRunning()) {
+            return;
+        }
+
         int key = e.getKeyCode();
 
         for(int i = 0; i < handler.object.size(); i++){
@@ -27,6 +33,10 @@ public class Input extends KeyAdapter {
     }
 
     public void keyReleased(KeyEvent e){
+        if (!game.isGameRunning()) {
+            return;
+        }
+
         int key = e.getKeyCode();
 
         for(int i = 0; i < handler.object.size(); i++){

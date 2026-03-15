@@ -1,9 +1,13 @@
 import java.awt.*;
 import java.awt.image.BufferStrategy;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 public class Game extends Canvas implements Runnable {
 
@@ -14,8 +18,8 @@ public class Game extends Canvas implements Runnable {
     private Handler handler;
     private Camera camera;
 
-    private BufferedImage level = null;
     private GameState gameState = GameState.Menu;
+    private final Random random = new Random();
 
     private final Rectangle startButtonBounds = new Rectangle(420, 260, 160, 60);
     private final Rectangle quitButtonBounds = new Rectangle(420, 350, 160, 60);
@@ -39,8 +43,6 @@ public class Game extends Canvas implements Runnable {
         this.addKeyListener(new Input(handler, this));
         this.addMouseListener(new MouseInput(handler, camera, this));
 
-        ImageLoader loader = new ImageLoader();
-        level = loader.loadImage("/game_level.png");
         highScore = loadHighScore();
 
     }
@@ -242,7 +244,7 @@ public class Game extends Canvas implements Runnable {
         resetMovementFlags();
         camera.setX(0);
         camera.setY(0);
-        loadLevel(level);
+        generateRandomLevel();
         gameState = GameState.Game;
     }
 
@@ -302,29 +304,173 @@ public class Game extends Canvas implements Runnable {
         g.drawString("Health: " + player.getHealth() + "/" + player.getMaxHealth(), x + 8, y + 16);
     }
 
-    private void loadLevel(BufferedImage image) {
-        int w = image.getWidth();
-        int h = image.getHeight();
+    private void generateRandomLevel() {
+        final int tileSize = 32;
+        final int mapWidth = 64;
+        final int mapHeight = 37;
 
-        for (int xx = 0; xx < w; xx++) {
-            for (int yy = 0; yy < h; yy++) {
-                int pixel = image.getRGB(xx, yy);
-                int red = (pixel >> 16) & 0xff;
-                int green = (pixel >> 8) & 0xff;
-                int blue = (pixel) & 0xff;
+        boolean[][] floorTiles = new boolean[mapWidth][mapHeight];
+        List<Room> rooms = createRooms(floorTiles, mapWidth, mapHeight);
+        if (rooms.isEmpty()) {
+            throw new IllegalStateException("Failed to generate a map with rooms.");
+        }
 
-                if (red == 255) {
-                    handler.addObject(new Block(xx * 32, yy * 32, ID.Block));
-                }
-
-                if (blue == 255) {
-                    handler.addObject(new Player(xx * 32, yy * 32, ID.Player, handler));
-                }
-
-                if (green == 255) {
-                    handler.addObject(new Enemy(xx * 32, yy * 32, ID.Enemy, handler));
+        for (int xx = 0; xx < mapWidth; xx++) {
+            for (int yy = 0; yy < mapHeight; yy++) {
+                if (!floorTiles[xx][yy]) {
+                    handler.addObject(new Block(xx * tileSize, yy * tileSize, ID.Block));
                 }
             }
+        }
+
+        Room playerRoom = rooms.get(random.nextInt(rooms.size()));
+        Point playerSpawn = randomFloorTileInRoom(playerRoom);
+        handler.addObject(new Player(playerSpawn.x * tileSize, playerSpawn.y * tileSize, ID.Player, handler));
+
+        Set<String> usedEnemyTiles = new HashSet<>();
+        int totalEnemies = 0;
+        for (Room room : rooms) {
+            int roomEnemies = 1 + random.nextInt(3);
+            if (room == playerRoom) {
+                roomEnemies = random.nextBoolean() ? 0 : 1;
+            }
+
+            for (int i = 0; i < roomEnemies; i++) {
+                Point enemySpawn = randomFloorTileInRoom(room);
+                if (enemySpawn.equals(playerSpawn)) {
+                    continue;
+                }
+
+                String tileKey = enemySpawn.x + ":" + enemySpawn.y;
+                if (!usedEnemyTiles.add(tileKey)) {
+                    continue;
+                }
+
+                handler.addObject(new Enemy(enemySpawn.x * tileSize, enemySpawn.y * tileSize, ID.Enemy, handler));
+                totalEnemies++;
+            }
+        }
+
+        if (totalEnemies == 0) {
+            Room fallbackRoom = rooms.get((rooms.indexOf(playerRoom) + 1) % rooms.size());
+            Point enemySpawn = randomFloorTileInRoom(fallbackRoom);
+            int attempts = 0;
+            while (enemySpawn.equals(playerSpawn) && attempts < 10) {
+                enemySpawn = randomFloorTileInRoom(fallbackRoom);
+                attempts++;
+            }
+            handler.addObject(new Enemy(enemySpawn.x * tileSize, enemySpawn.y * tileSize, ID.Enemy, handler));
+        }
+    }
+
+    private List<Room> createRooms(boolean[][] floorTiles, int mapWidth, int mapHeight) {
+        List<Room> rooms = new ArrayList<>();
+        int desiredRooms = 7 + random.nextInt(5);
+        int attempts = 0;
+        int maxAttempts = 200;
+
+        while (rooms.size() < desiredRooms && attempts < maxAttempts) {
+            attempts++;
+
+            int roomWidth = 6 + random.nextInt(8);
+            int roomHeight = 6 + random.nextInt(6);
+            int x = 1 + random.nextInt(Math.max(1, mapWidth - roomWidth - 2));
+            int y = 1 + random.nextInt(Math.max(1, mapHeight - roomHeight - 2));
+            Room candidate = new Room(x, y, roomWidth, roomHeight);
+
+            boolean overlaps = false;
+            for (Room room : rooms) {
+                if (candidate.intersectsWithPadding(room, 1)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (overlaps) {
+                continue;
+            }
+
+            carveRoom(floorTiles, candidate);
+            if (!rooms.isEmpty()) {
+                connectRooms(floorTiles, rooms.get(rooms.size() - 1), candidate);
+            }
+            rooms.add(candidate);
+        }
+
+        if (rooms.isEmpty()) {
+            Room fallback = new Room(4, 4, 8, 8);
+            carveRoom(floorTiles, fallback);
+            rooms.add(fallback);
+        }
+
+        return rooms;
+    }
+
+    private void carveRoom(boolean[][] floorTiles, Room room) {
+        for (int x = room.x; x < room.x + room.width; x++) {
+            for (int y = room.y; y < room.y + room.height; y++) {
+                floorTiles[x][y] = true;
+            }
+        }
+    }
+
+    private void connectRooms(boolean[][] floorTiles, Room first, Room second) {
+        Point firstCenter = first.center();
+        Point secondCenter = second.center();
+
+        if (random.nextBoolean()) {
+            carveHorizontalTunnel(floorTiles, firstCenter.x, secondCenter.x, firstCenter.y);
+            carveVerticalTunnel(floorTiles, firstCenter.y, secondCenter.y, secondCenter.x);
+        } else {
+            carveVerticalTunnel(floorTiles, firstCenter.y, secondCenter.y, firstCenter.x);
+            carveHorizontalTunnel(floorTiles, firstCenter.x, secondCenter.x, secondCenter.y);
+        }
+    }
+
+    private void carveHorizontalTunnel(boolean[][] floorTiles, int x1, int x2, int y) {
+        int min = Math.min(x1, x2);
+        int max = Math.max(x1, x2);
+        for (int x = min; x <= max; x++) {
+            floorTiles[x][y] = true;
+        }
+    }
+
+    private void carveVerticalTunnel(boolean[][] floorTiles, int y1, int y2, int x) {
+        int min = Math.min(y1, y2);
+        int max = Math.max(y1, y2);
+        for (int y = min; y <= max; y++) {
+            floorTiles[x][y] = true;
+        }
+    }
+
+    private Point randomFloorTileInRoom(Room room) {
+        int x = room.x + random.nextInt(room.width);
+        int y = room.y + random.nextInt(room.height);
+        return new Point(x, y);
+    }
+
+    private static class Room {
+        private final int x;
+        private final int y;
+        private final int width;
+        private final int height;
+
+        private Room(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+
+        private Point center() {
+            return new Point(x + width / 2, y + height / 2);
+        }
+
+        private boolean intersectsWithPadding(Room other, int padding) {
+            return x - padding < other.x + other.width
+                    && x + width + padding > other.x
+                    && y - padding < other.y + other.height
+                    && y + height + padding > other.y;
         }
     }
 

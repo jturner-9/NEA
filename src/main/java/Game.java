@@ -1,6 +1,5 @@
 import java.awt.*;
 import java.awt.image.BufferStrategy;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,8 +12,7 @@ public class Game extends Canvas implements Runnable {
     private Thread thread;
     private Handler handler;
     private Camera camera;
-
-    private BufferedImage level = null;
+    private final ProceduralLevelGenerator levelGenerator = new ProceduralLevelGenerator();
     private GameState gameState = GameState.Menu;
 
     private final Rectangle startButtonBounds = new Rectangle(420, 260, 160, 60);
@@ -39,8 +37,6 @@ public class Game extends Canvas implements Runnable {
         this.addKeyListener(new Input(handler, this));
         this.addMouseListener(new MouseInput(handler, camera, this));
 
-        ImageLoader loader = new ImageLoader();
-        level = loader.loadImage("/game_level.png");
         highScore = loadHighScore();
 
     }
@@ -242,7 +238,7 @@ public class Game extends Canvas implements Runnable {
         resetMovementFlags();
         camera.setX(0);
         camera.setY(0);
-        loadLevel(level);
+        loadGeneratedLevel();
         gameState = GameState.Game;
     }
 
@@ -302,29 +298,25 @@ public class Game extends Canvas implements Runnable {
         g.drawString("Health: " + player.getHealth() + "/" + player.getMaxHealth(), x + 8, y + 16);
     }
 
-    private void loadLevel(BufferedImage image) {
-        int w = image.getWidth();
-        int h = image.getHeight();
+    private void loadGeneratedLevel() {
+        ProceduralLevelGenerator.GeneratedLevel generatedLevel = levelGenerator.generate();
+        boolean[][] floorTiles = generatedLevel.getFloorTiles();
+        int tileSize = generatedLevel.getTileSize();
 
-        for (int xx = 0; xx < w; xx++) {
-            for (int yy = 0; yy < h; yy++) {
-                int pixel = image.getRGB(xx, yy);
-                int red = (pixel >> 16) & 0xff;
-                int green = (pixel >> 8) & 0xff;
-                int blue = (pixel) & 0xff;
-
-                if (red == 255) {
-                    handler.addObject(new Block(xx * 32, yy * 32, ID.Block));
-                }
-
-                if (blue == 255) {
-                    handler.addObject(new Player(xx * 32, yy * 32, ID.Player, handler));
-                }
-
-                if (green == 255) {
-                    handler.addObject(new Enemy(xx * 32, yy * 32, ID.Enemy, handler));
+        for (int x = 0; x < generatedLevel.getWidthTiles(); x++) {
+            for (int y = 0; y < generatedLevel.getHeightTiles(); y++) {
+                if (!floorTiles[x][y]) {
+                    handler.addObject(new Block(x * tileSize, y * tileSize, ID.Block));
                 }
             }
+        }
+
+        int playerX = generatedLevel.getPlayerSpawnTile().x * tileSize;
+        int playerY = generatedLevel.getPlayerSpawnTile().y * tileSize;
+        handler.addObject(new Player(playerX, playerY, ID.Player, handler));
+
+        for (Point enemySpawnTile : generatedLevel.getEnemySpawnTiles()) {
+            handler.addObject(new Enemy(enemySpawnTile.x * tileSize, enemySpawnTile.y * tileSize, ID.Enemy, handler));
         }
     }
 

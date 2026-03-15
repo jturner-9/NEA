@@ -35,7 +35,7 @@ public class Projectile extends GameObject {
     }
 
     public void render(Graphics g) {
-        g.setColor(Color.yellow);
+        g.setColor(Color.green);
         g.fillOval(x, y, 8, 8);
     }
 

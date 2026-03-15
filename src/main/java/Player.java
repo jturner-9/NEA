@@ -26,25 +26,25 @@ public class Player extends GameObject {
         }
 
         // movement
-        if (handler.isUp()) {
+        if (handler.isUp()) { // moves upwards
             velY = -5;
         } else if (!handler.isDown()) {
             velY = 0;
         }
 
-        if (handler.isDown()) {
+        if (handler.isDown()) { // moves downwards
             velY = 5;
         } else if (!handler.isUp()) {
             velY = 0;
         }
 
-        if (handler.isRight()) {
+        if (handler.isRight()) { // moves to the right
             velX = 5;
         } else if (!handler.isLeft()) {
             velX = 0;
         }
 
-        if (handler.isLeft()) {
+        if (handler.isLeft()) { // moves to the left
             velX = -5;
         } else if (!handler.isRight()) {
             velX = 0;
